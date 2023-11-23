@@ -1,0 +1,50 @@
+---
+version: "3.8"
+services:
+  redis:
+    image: redis:5.0.6-alpine3.10
+    hostname: "redis"
+  postgres:
+    image: postgres:11
+    hostname: postgres
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+    logging:
+      driver: none
+  rabbitmq:
+    image: rabbitmq:3-management
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_ERLANG_COOKIE: SWQOKODSQALRPCLNMEQG
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_VHOST: /
+    logging:
+      driver: none
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    env_file: .env.example
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+    command: >
+      /bin/sh -c "bin/setup \
+        && bundle exec rspec --colour --tty --format progress"
+    ports:
+      - 3000:3000
+    environment:
+      RAILS_ENV: test
+      POSTGRESQL_HOST: postgres
+      POSTGRESQL_USER: postgres
+      POSTGRESQL_PASSWORD: postgres
+      MESSAGE_BROKER_URL: amqp://guest:guest@rabbitmq:5672
+      MESSAGE_BROKER_VHOST: /
+      REDIS_URL: "redis://redis:6379/1"
+      BUNDLE_PATH: /opt/app/.bundle
+    volumes:
+      - .:/opt/app
